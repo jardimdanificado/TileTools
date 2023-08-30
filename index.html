@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tileset Splitter</title>
+    <title>Image Splitter</title>
     <style>
         .tile-container {
             display: flex;
@@ -42,16 +42,13 @@
     <input type="number" id="blue" min="0" max="255" value="0">
     <br>
     <button id="splitButton">Split Image</button>
-    <button id="redoButton">Redo</button>
     <div id="output" class="tile-container"></div>
     <script>
         const fileInput = document.getElementById('fileInput');
         const splitButton = document.getElementById('splitButton');
-        const redoButton = document.getElementById('redoButton');
 
         fileInput.addEventListener('change', handleFile);
         splitButton.addEventListener('click', splitImage);
-        redoButton.addEventListener('click', redo);
 
         let image = null;
 
@@ -66,7 +63,6 @@
                     const context = canvas.getContext('2d');
                     context.drawImage(image, 0, 0);
                     splitButton.disabled = false;
-                    redoButton.disabled = false;
                 };
                 image.src = URL.createObjectURL(file);
             }
@@ -122,14 +118,6 @@
                     output.appendChild(tileContainer);
                 }
             }
-        }
-
-        function redo() {
-            image = null;
-            output.innerHTML = '';
-            fileInput.value = '';
-            splitButton.disabled = true;
-            redoButton.disabled = true;
         }
     </script>
 </body>
