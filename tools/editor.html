@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tileset Editor</title>
+    <style>
+        .tile-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .tile {
+            margin: 4px;
+            cursor: pointer;
+        }
+
+        .tile-image {
+            display: block;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tileset Editor</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <label for="tileWidth">Tile Width (px):</label>
+    <input type="number" id="tileWidth">
+    <br>
+    <label for="tileHeight">Tile Height (px):</label>
+    <input type="number" id="tileHeight">
+    <br>
+    <label for="colCount">Number of Columns:</label>
+    <input type="number" id="colCount">
+    <br>
+    <label for="margin">Margin (px):</label>
+    <input type="number" id="margin" value="0">
+    <br>
+    <label for="transparency">Apply Transparency:</label>
+    <input type="checkbox" id="applyTransparency">
+    <br>
+    <div id="transparencyFields" style="display: none;">
+        <label for="red">Red:</label>
+        <input type="number" id="red" min="0" max="255" value="0">
+        <label for="green">Green:</label>
+        <input type="number" id="green" min="0" max="255" value="0">
+        <label for="blue">Blue:</label>
+        <input type="number" id="blue" min="0" max="255" value="0">
+    </div>
+    <button id="splitButton">Split Tileset</button>
+    <button id="generateButton" style="display: none;">Generate New Tileset</button>
+    <div id="output" class="tile-container"></div>
+    <canvas id="newTilesetCanvas" style="display: none;"></canvas>
+    <button id="downloadButton" style="display: none;">Download New Tileset</button>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const tileWidthInput = document.getElementById('tileWidth');
+        const tileHeightInput = document.getElementById('tileHeight');
+        const colCountInput = document.getElementById('colCount');
+        const marginInput = document.getElementById('margin');
+        const applyTransparencyCheckbox = document.getElementById('applyTransparency');
+        const transparencyFields = document.getElementById('transparencyFields');
+        const redInput = document.getElementById('red');
+        const greenInput = document.getElementById('green');
+        const blueInput = document.getElementById('blue');
+        const splitButton = document.getElementById('splitButton');
+        const generateButton = document.getElementById('generateButton');
+        const output = document.getElementById('output');
+        const newTilesetCanvas = document.getElementById('newTilesetCanvas');
+        const downloadButton = document.getElementById('downloadButton');
+        const ctx = newTilesetCanvas.getContext('2d');
+
+        let image = null;
+        let tiles = [];
+        let selectedTiles = [];
+
+        fileInput.addEventListener('change', handleFile);
+        tileWidthInput.addEventListener('input', updateSplitButtonAvailability);
+        tileHeightInput.addEventListener('input', updateSplitButtonAvailability);
+        colCountInput.addEventListener('input', updateSplitButtonAvailability);
+        applyTransparencyCheckbox.addEventListener('change', toggleTransparencyFields);
+        splitButton.addEventListener('click', splitTileset);
+        generateButton.addEventListener('click', generateNewTileset);
+        output.addEventListener('click', toggleTileSelection);
+        downloadButton.addEventListener('click', downloadNewTileset);
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                image = new Image();
+                image.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.width;
+                    canvas.height = image.height;
+                    const context = canvas.getContext('2d');
+                    context.drawImage(image, 0, 0);
+                    splitButton.style.display = 'block';
+                    updateSplitButtonAvailability();
+                };
+                image.src = URL.createObjectURL(file);
+            }
+        }
+
+        function updateSplitButtonAvailability() {
+            const isTransparencyChecked = applyTransparencyCheckbox.checked;
+
+            if (isTransparencyChecked) {
+                transparencyFields.style.display = 'block';
+            } else {
+                transparencyFields.style.display = 'none';
+            }
+        }
+
+        function toggleTransparencyFields() {
+            const isTransparencyChecked = applyTransparencyCheckbox.checked;
+            if (isTransparencyChecked) {
+                transparencyFields.style.display = 'block';
+            } else {
+                transparencyFields.style.display = 'none';
+            }
+        }
+
+        function splitTileset() {
+            const tileWidth = parseInt(tileWidthInput.value);
+            const tileHeight = parseInt(tileHeightInput.value);
+            const colCount = parseInt(colCountInput.value);
+            const margin = parseInt(marginInput.value);
+            const isTransparencyChecked = applyTransparencyCheckbox.checked;
+            const red = parseInt(redInput.value);
+            const green = parseInt(greenInput.value);
+            const blue = parseInt(blueInput.value);
+
+            if (!tileWidth || !tileHeight || !colCount) {
+                alert('Por favor, preencha todos os campos corretamente.');
+                return;
+            }
+
+            const cols = Math.floor(image.width / (tileWidth + margin));
+            const rows = Math.floor(image.height / (tileHeight + margin));
+
+            tiles = [];
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const tileCanvas = document.createElement('canvas');
+                    tileCanvas.width = tileWidth;
+                    tileCanvas.height = tileHeight;
+                    const context = tileCanvas.getContext('2d');
+                    const sourceX = x * (tileWidth + margin);
+                    const sourceY = y * (tileHeight + margin);
+                    context.drawImage(image, sourceX, sourceY, tileWidth, tileHeight, 0, 0, tileWidth, tileHeight);
+
+                    if (isTransparencyChecked) {
+                        const imageData = context.getImageData(0, 0, tileWidth, tileHeight);
+                        const pixels = imageData.data;
+
+                        for (let i = 0; i < pixels.length; i += 4) {
+                            if (
+                                pixels[i] === red &&
+                                pixels[i + 1] === green &&
+                                pixels[i + 2] === blue
+                            ) {
+                                pixels[i + 3] = 0;
+                            }
+                        }
+
+                        context.putImageData(imageData, 0, 0);
+                    }
+
+                    tiles.push(tileCanvas);
+                }
+            }
+
+            selectedTiles = Array.from({ length: tiles.length }, (_, i) => i);
+            generateButton.style.display = 'block';
+        }
+
+        function generateNewTileset() {
+            const tileWidth = parseInt(tileWidthInput.value);
+            const colCount = parseInt(colCountInput.value);
+            const margin = parseInt(marginInput.value);
+
+            if (!tileWidth || !colCount) {
+                alert('Por favor, preencha a largura do tile e o número de colunas corretamente.');
+                return;
+            }
+
+            const rowCount = Math.ceil(selectedTiles.length / colCount);
+
+            newTilesetCanvas.width = colCount * (tileWidth + margin);
+            newTilesetCanvas.height = rowCount * (tiles[0].height + margin);
+
+            ctx.clearRect(0, 0, newTilesetCanvas.width, newTilesetCanvas.height);
+
+            selectedTiles.forEach((tileIndex, index) => {
+                const tile = tiles[tileIndex];
+                const col = index % colCount;
+                const row = Math.floor(index / colCount);
+                const x = col * (tileWidth + margin);
+                const y = row * (tile.height + margin);
+                ctx.drawImage(tile, x, y);
+            });
+
+            downloadButton.style.display = 'block';
+        }
+
+        function toggleTileSelection(event) {
+            const target = event.target;
+            if (target.tagName === 'IMG') {
+                const index = parseInt(target.dataset.index);
+                if (selectedTiles.includes(index)) {
+                    selectedTiles = selectedTiles.filter((tileIndex) => tileIndex !== index);
+                    target.style.border = 'none';
+                } else {
+                    selectedTiles.push(index);
+                    target.style.border = '2px solid blue';
+                }
+            }
+        }
+
+        function downloadNewTileset() {
+            const link = document.createElement('a');
+            link.href = newTilesetCanvas.toDataURL();
+            link.download = 'new_tileset.png';
+            link.click();
+        }
+    </script>
+</body>
+</html>
