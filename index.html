@@ -99,11 +99,11 @@
             transparencyFields.style.display = transparencyCheckbox.checked ? 'block' : 'none';
         }
 
-        function downloadTile(tileCanvas, x, y) 
+        function downloadTile(tileCanvas, x, y,cols,rows) 
         {
             const link = document.createElement('a');
             link.href = tileCanvas.toDataURL();
-            link.download = `tile_${x + 1}_${y + 1}.png`;
+            link.download = `tile_${x + (y * cols)}.png`;
             link.click();
         }
 
@@ -160,12 +160,14 @@
                     // Add the split image to the zip file
                     const imageDataUrl = tileCanvas.toDataURL();
                     const imageData = imageDataUrl.split(',')[1]; // Extract the base64 data
-                    zip.file(`tile_${x + 1}_${y + 1}.png`, imageData, { base64: true });
+                    zip.file(`tile_${x + (y * cols)}.png`, imageData, { base64: true });
 
                     const tileImage = new Image();
                     tileImage.src = imageDataUrl;
+                    tileImage.src = imageDataUrl;
                     tileImage.className = 'tile-image';
-                    tileImage.onclick = () => downloadTile(tileCanvas, x, y);
+                    tileImage.title = `Tile ${x + (y * cols)}`; // Define o título com o nome do arquivo
+                    tileImage.onclick = () => downloadTile(tileCanvas, x, y, cols, rows);
 
                     const tileContainer = document.createElement('div');
                     tileContainer.className = 'tile';
