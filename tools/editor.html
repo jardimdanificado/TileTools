@@ -19,6 +19,15 @@
             display: block;
             max-width: 100%;
         }
+
+        .selected {
+            border: 2px solid blue;
+        }
+
+        #previewTileset {
+            max-width: 100%;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -26,13 +35,13 @@
     <input type="file" id="fileInput" accept="image/*">
     <br>
     <label for="tileWidth">Tile Width (px):</label>
-    <input type="number" id="tileWidth">
+    <input type="number" id="tileWidth" value="16">
     <br>
     <label for="tileHeight">Tile Height (px):</label>
-    <input type="number" id="tileHeight">
+    <input type="number" id="tileHeight" value="16">
     <br>
     <label for="colCount">Number of Columns:</label>
-    <input type="number" id="colCount">
+    <input type="number" id="colCount" value="4">
     <br>
     <label for="margin">Margin (px):</label>
     <input type="number" id="margin" value="0">
@@ -48,11 +57,14 @@
         <label for="blue">Blue:</label>
         <input type="number" id="blue" min="0" max="255" value="0">
     </div>
-    <button id="splitButton">Split Tileset</button>
+    <button id="splitButton" style="display: none;">Split Tileset</button>
+    <button id="selectAllButton" style="display: none;">Select All</button>
+    <button id="deselectAllButton" style="display: none;">Deselect All</button>
     <button id="generateButton" style="display: none;">Generate New Tileset</button>
     <div id="output" class="tile-container"></div>
     <canvas id="newTilesetCanvas" style="display: none;"></canvas>
     <button id="downloadButton" style="display: none;">Download New Tileset</button>
+    <img id="previewTileset" alt="Preview Tileset">
     <script>
         const fileInput = document.getElementById('fileInput');
         const tileWidthInput = document.getElementById('tileWidth');
@@ -66,9 +78,12 @@
         const blueInput = document.getElementById('blue');
         const splitButton = document.getElementById('splitButton');
         const generateButton = document.getElementById('generateButton');
+        const selectAllButton = document.getElementById('selectAllButton');
+        const deselectAllButton = document.getElementById('deselectAllButton');
         const output = document.getElementById('output');
         const newTilesetCanvas = document.getElementById('newTilesetCanvas');
         const downloadButton = document.getElementById('downloadButton');
+        const previewTileset = document.getElementById('previewTileset');
         const ctx = newTilesetCanvas.getContext('2d');
 
         let image = null;
@@ -80,8 +95,16 @@
         tileHeightInput.addEventListener('input', updateSplitButtonAvailability);
         colCountInput.addEventListener('input', updateSplitButtonAvailability);
         applyTransparencyCheckbox.addEventListener('change', toggleTransparencyFields);
-        splitButton.addEventListener('click', splitTileset);
+        splitButton.addEventListener('click', function () {
+            if (image) {
+                splitTileset();
+            } else {
+                alert('Por favor, carregue uma imagem primeiro.');
+            }
+        });
         generateButton.addEventListener('click', generateNewTileset);
+        selectAllButton.addEventListener('click', selectAll);
+        deselectAllButton.addEventListener('click', deselectAll);
         output.addEventListener('click', toggleTileSelection);
         downloadButton.addEventListener('click', downloadNewTileset);
 
@@ -96,6 +119,8 @@
                     const context = canvas.getContext('2d');
                     context.drawImage(image, 0, 0);
                     splitButton.style.display = 'block';
+                    selectAllButton.style.display = 'block';
+                    deselectAllButton.style.display = 'block';
                     updateSplitButtonAvailability();
                 };
                 image.src = URL.createObjectURL(file);
@@ -174,6 +199,51 @@
 
             selectedTiles = Array.from({ length: tiles.length }, (_, i) => i);
             generateButton.style.display = 'block';
+            displayTiles();
+        }
+
+        function displayTiles() {
+            output.innerHTML = '';
+            tiles.forEach((tile, index) => {
+                const tileImage = new Image();
+                tileImage.src = tile.toDataURL();
+                tileImage.className = 'tile-image';
+                tileImage.dataset.index = index;
+
+                const tileContainer = document.createElement('div');
+                tileContainer.className = 'tile';
+                if (selectedTiles.includes(index)) {
+                    tileContainer.classList.add('selected');
+                }
+                tileContainer.appendChild(tileImage);
+
+                output.appendChild(tileContainer);
+            });
+        }
+
+        function toggleTileSelection(event) {
+            const target = event.target;
+            if (target.tagName === 'IMG') {
+                const index = parseInt(target.dataset.index);
+                const tileContainer = target.parentNode;
+                if (selectedTiles.includes(index)) {
+                    selectedTiles = selectedTiles.filter((tileIndex) => tileIndex !== index);
+                    tileContainer.classList.remove('selected');
+                } else {
+                    selectedTiles.push(index);
+                    tileContainer.classList.add('selected');
+                }
+            }
+        }
+
+        function selectAll() {
+            selectedTiles = Array.from({ length: tiles.length }, (_, i) => i);
+            displayTiles();
+        }
+
+        function deselectAll() {
+            selectedTiles = [];
+            displayTiles();
         }
 
         function generateNewTileset() {
@@ -203,20 +273,8 @@
             });
 
             downloadButton.style.display = 'block';
-        }
-
-        function toggleTileSelection(event) {
-            const target = event.target;
-            if (target.tagName === 'IMG') {
-                const index = parseInt(target.dataset.index);
-                if (selectedTiles.includes(index)) {
-                    selectedTiles = selectedTiles.filter((tileIndex) => tileIndex !== index);
-                    target.style.border = 'none';
-                } else {
-                    selectedTiles.push(index);
-                    target.style.border = '2px solid blue';
-                }
-            }
+            previewTileset.src = newTilesetCanvas.toDataURL();
+            previewTileset.style.display = 'block';
         }
 
         function downloadNewTileset() {
